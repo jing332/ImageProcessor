@@ -1,6 +1,6 @@
 # ImageProcessor
 
-图片 jpeg png webp 互转，以及尺寸调节
+安卓图片批量 jpeg png webp 互转，以及尺寸调节。
 
 ## Download
 
@@ -9,4 +9,4 @@
 
 ## ScreenShoots
 
-<img src="./images/1.jpg", height="150px">
+<img src="./images/1.jpg" height="150px">
