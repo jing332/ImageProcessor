@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">图片处理器</string>
+    <string name="expandble_text_more">展开</string>
+    <string name="expandble_text_less">收起</string>
+    <string name="target_format">目标格式</string>
+    <string name="height">高 (像素)</string>
+    <string name="width">宽 (像素)</string>
+    <string name="source_directory">源目录</string>
+    <string name="select_folder">选择文件夹</string>
+    <string name="click_button_select_dir">单击右侧按钮选择目录 ➡</string>
+    <string name="last_directory">使用上次目录：%1$s</string>
+    <string name="start">开始</string>
+    <string name="warn">警告</string>
+    <string name="warn_msg">1. 执行过程中请保证主界面可见，否则可能会导致异常。\n\n2. 转换后的文件保存在 源目录中的outputs文件夹中。\n\n 3. 对于目标格式WEBP，有几率出现bug输出空文件。</string>
+</resources>
