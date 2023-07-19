@@ -8,9 +8,10 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
@@ -21,6 +22,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class ProcessorViewModel : ViewModel() {
+    var srcDir by mutableStateOf("")
+    var running by mutableStateOf(false)
+    var process by mutableStateOf(0f)
+
+    var format by mutableStateOf(CompressFormat.PNG.name)
+    var width by mutableStateOf("0")
+    var height by mutableStateOf("0")
+
     val files = mutableStateListOf<FileModel>()
 
     fun loadDir(context: Context, dir: Uri) {
@@ -55,12 +64,15 @@ class ProcessorViewModel : ViewModel() {
         width: Int = 0,
         height: Int = 0,
     ) {
-        files.toList().forEachIndexed { index, fileModel ->
-            files[index] = fileModel.copy(processState = ProcessState.IDLE)
-        }
-
         viewModelScope.launch(Dispatchers.IO) {
+            running = true
             files.toList().forEachIndexed { index, fileModel ->
+                files[index] = fileModel.copy(processState = ProcessState.IDLE)
+            }
+
+            val fileList = files.toList()
+            val count = fileList.size
+            fileList.forEachIndexed { index, fileModel ->
                 files[index] = fileModel.copy(processState = ProcessState.PROCESSING)
 
                 runCatching {
@@ -90,11 +102,17 @@ class ProcessorViewModel : ViewModel() {
                     }
                 }.onFailure {
                     it.printStackTrace()
-                    files[index] = fileModel.copy(processState = ProcessState.ERROR)
+                    files[index] = fileModel.copy(processState = ProcessState.ERROR(it))
                 }.onSuccess {
                     files[index] = fileModel.copy(processState = ProcessState.DONE)
                 }
+
+                process =  (index + 1) / count.toFloat()
+                println(process)
             }
+
+            running = false
+            process = 0.0f
         }
     }
 
@@ -117,15 +135,16 @@ class ProcessorViewModel : ViewModel() {
         val name: String,
         val uri: Uri,
         val uriString: String,
-        val processState: Int,
+        val processState: ProcessState,
         val size: String = "0 KB",
     )
 
 }
 
-object ProcessState {
-    const val IDLE = 0
-    const val PROCESSING = 1
-    const val DONE = 2
-    const val ERROR = 3
+
+sealed class ProcessState(id: Int) {
+    object IDLE : ProcessState(0)
+    object PROCESSING : ProcessState(1)
+    object DONE : ProcessState(2)
+    data class ERROR(val t: Throwable) : ProcessState(3)
 }

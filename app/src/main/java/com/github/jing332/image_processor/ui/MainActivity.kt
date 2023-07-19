@@ -32,13 +32,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -94,20 +98,84 @@ class MainActivity : ComponentActivity() {
                     targetState = showPreviewImage, animationSpec = tween(500), label = ""
                 ) { isShow ->
                     if (isShow) { // 预览大图
-                        BackHandler {
-                            showPreviewImage = false
-                        }
+                        BackHandler { showPreviewImage = false }
                         val state = rememberViewerState()
                         ImageViewer(
                             state = state,
                             model = previewImageBitmap ?: ImageBitmap(20, 20),
                             modifier = Modifier.fillMaxSize(),
                         )
-                    } else
+                    } else {
+                        var showAboutDialog by remember { mutableStateOf(false) }
+                        if (showAboutDialog)
+                            AboutDialog { showAboutDialog = false }
+
+                        var showFolderEditDialog by remember { mutableStateOf(false) }
+                        if (showFolderEditDialog) {
+                            var folderName by remember { mutableStateOf(AppConfig.targetFolderName.value) }
+                            AlertDialog(
+                                onDismissRequest = { showFolderEditDialog = false },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        AppConfig.targetFolderName.value = folderName
+                                        showFolderEditDialog = false
+                                    }) {
+                                        Text(stringResource(android.R.string.ok))
+                                    }
+                                },
+                                text = {
+                                    OutlinedTextField(
+                                        value = folderName,
+                                        onValueChange = { folderName = it },
+                                        label = { Text(stringResource(id = R.string.edit_target_folder)) }
+                                    )
+                                },
+                                title = {
+                                    Text(stringResource(R.string.edit_target_folder))
+                                }
+                            )
+                        }
                         Scaffold(
                             modifier = Modifier.imePadding(),
                             topBar = {
-                                TopAppBar(title = { Text(stringResource(id = R.string.app_name)) })
+                                TopAppBar(title = { Text(stringResource(id = R.string.app_name)) },
+                                    actions = {
+                                        var showMoreOptions by remember {
+                                            mutableStateOf(
+                                                false
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showMoreOptions,
+                                            onDismissRequest = {
+                                                showMoreOptions = false
+                                            }) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(id = R.string.about)) },
+                                                onClick = {
+                                                    showAboutDialog = true
+                                                    showMoreOptions = false
+                                                }
+                                            )
+
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(id = R.string.edit_target_folder)) },
+                                                onClick = {
+                                                    showFolderEditDialog = true
+                                                    showMoreOptions = false
+                                                }
+                                            )
+                                        }
+
+                                        IconButton(onClick = {
+                                            showMoreOptions = true
+                                        }) {
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = stringResource(R.string.more_options)
+                                            )
+                                        }
+                                    })
                             }
                         ) {
                             ProcessorScreen(
@@ -121,6 +189,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                    }
                 }
             }
         }
@@ -134,7 +203,6 @@ fun ProcessorScreen(
     previewImage: (ImageBitmap) -> Unit
 ) {
     val context = LocalContext.current
-    var srcDir by remember { mutableStateOf("") }
     var lastSrcDir by remember { AppConfig.sourceDirectory }
 
     val dirSelection =
@@ -144,8 +212,8 @@ fun ProcessorScreen(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
-                srcDir = uri.toString()
-                lastSrcDir = srcDir
+                vm.srcDir = uri.toString()
+                lastSrcDir = vm.srcDir
 
                 vm.loadDir(context, uri)
             }
@@ -155,9 +223,9 @@ fun ProcessorScreen(
         OutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
             value = context.getPath(
-                srcDir.toUri(), true
-            ) ?: srcDir,
-            onValueChange = { srcDir = it },
+                vm.srcDir.toUri(), true
+            ) ?: vm.srcDir,
+            onValueChange = { vm.srcDir = it },
             label = { Text(stringResource(R.string.source_directory)) },
             readOnly = true,
             trailingIcon = {
@@ -171,7 +239,7 @@ fun ProcessorScreen(
             placeholder = { Text(stringResource(R.string.click_button_select_dir)) }
         )
 
-        if (srcDir.isEmpty() && lastSrcDir.isNotEmpty()) {
+        if (vm.srcDir.isEmpty() && lastSrcDir.isNotEmpty()) {
             Box(
                 Modifier
                     .clip(MaterialTheme.shapes.small)
@@ -179,7 +247,7 @@ fun ProcessorScreen(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = rememberRipple()
                     ) {
-                        srcDir = lastSrcDir
+                        vm.srcDir = lastSrcDir
                         vm.loadDir(context, lastSrcDir.toUri())
                     },
             ) {
@@ -220,20 +288,20 @@ fun ProcessorScreen(
         }
 
         Column {
-            var format by remember { mutableStateOf(Bitmap.CompressFormat.PNG.name) }
-            var width by remember { mutableStateOf("0") }
-            var height by remember { mutableStateOf("0") }
+            if (vm.process > 0)
+                LinearProgressIndicator(progress = vm.process, modifier = Modifier.fillMaxWidth())
+
             Row() {
                 DropMenuTextField(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 2.dp),
                     label = { Text(stringResource(R.string.target_format)) },
-                    key = format,
+                    key = vm.format,
                     keys = Bitmap.CompressFormat.values().map { it.name },
                     values = Bitmap.CompressFormat.values().map { it.name },
                     onKeyChange = {
-                        format = it.toString()
+                        vm.format = it.toString()
                     }
                 )
 
@@ -241,8 +309,8 @@ fun ProcessorScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 2.dp),
-                    value = width,
-                    onValueChange = { width = it },
+                    value = vm.width,
+                    onValueChange = { vm.width = it },
                     label = { Text(stringResource(R.string.width)) },
                 )
 
@@ -252,9 +320,9 @@ fun ProcessorScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 2.dp),
-                    value = height,
+                    value = vm.height,
                     onValueChange = {
-                        height = it
+                        vm.height = it
                     },
                     label = { Text(stringResource(R.string.height)) },
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
@@ -262,14 +330,13 @@ fun ProcessorScreen(
             }
 
             var quality by remember { mutableIntStateOf(100) }
-            if (format != Bitmap.CompressFormat.PNG.name)
+            if (vm.format != Bitmap.CompressFormat.PNG.name)
                 LabelSlider(
                     value = quality.toFloat(),
                     onValueChange = { quality = it.toInt() },
-                    valueRange = 1f..100f,
-                    steps = 50,
+                    valueRange = 0f..100f
                 ) {
-                    Text("质量: $quality")
+                    Text(stringResource(R.string.image_quality, quality))
                 }
 
             var showWarnDialog by remember { mutableStateOf(false) }
@@ -277,23 +344,25 @@ fun ProcessorScreen(
                 ExecuteWarnDialog(onDismissRequest = { showWarnDialog = false }) {
                     vm.executeConv(
                         context,
-                        srcUri = srcDir.toUri(),
-                        format = Bitmap.CompressFormat.valueOf(format),
+                        srcUri = vm.srcDir.toUri(),
+                        format = Bitmap.CompressFormat.valueOf(vm.format),
                         quality = quality,
                         width = try {
-                            width.toInt()
+                            vm.width.toInt()
                         } catch (_: Exception) {
                             0
                         },
                         height = try {
-                            height.toInt()
+                            vm.height.toInt()
                         } catch (_: Exception) {
                             0
                         },
+                        folderName = AppConfig.targetFolderName.value,
                     )
                 }
 
             ElevatedButton(
+                enabled = !vm.running,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     showWarnDialog = true
@@ -319,7 +388,10 @@ fun ExecuteWarnDialog(onDismissRequest: () -> Unit, onStart: () -> Unit) {
             }
         },
         text = {
-            Text(stringResource(R.string.warn_msg), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.warn_msg, AppConfig.targetFolderName.value),
+                style = MaterialTheme.typography.titleMedium
+            )
         },
         confirmButton = {
             TextButton(onClick = {
@@ -333,7 +405,13 @@ fun ExecuteWarnDialog(onDismissRequest: () -> Unit, onStart: () -> Unit) {
 }
 
 @Composable
-fun FileItemScreen(uri: Uri, name: String, state: Int, size: String, onClick: () -> Unit) {
+fun FileItemScreen(
+    uri: Uri,
+    name: String,
+    state: ProcessState,
+    size: String,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .clip(MaterialTheme.shapes.extraSmall)
@@ -355,17 +433,20 @@ fun FileItemScreen(uri: Uri, name: String, state: Int, size: String, onClick: ()
             ) {
                 Text(
                     text = when (state) {
-                        ProcessState.DONE -> "完成"
-                        ProcessState.ERROR -> "错误"
-                        ProcessState.PROCESSING -> "处理中"
+                        is ProcessState.DONE -> "完成"
+                        is ProcessState.ERROR -> {
+                            "错误: ${state.t}"
+                        }
+
+                        is ProcessState.PROCESSING -> "处理中"
 
                         else -> "就绪"
                     },
                     style = MaterialTheme.typography.titleSmall,
                     color = when (state) {
-                        ProcessState.DONE -> MaterialTheme.colorScheme.primary
-                        ProcessState.ERROR -> MaterialTheme.colorScheme.error
-                        ProcessState.PROCESSING -> MaterialTheme.colorScheme.secondary
+                        is ProcessState.DONE -> MaterialTheme.colorScheme.primary
+                        is ProcessState.ERROR -> MaterialTheme.colorScheme.error
+                        is ProcessState.PROCESSING -> MaterialTheme.colorScheme.secondary
 
                         else -> MaterialTheme.colorScheme.tertiary
                     },

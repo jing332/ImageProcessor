@@ -12,4 +12,10 @@ object AppConfig {
         key = "source_directory",
         initialValue = ""
     )
+
+    val targetFolderName = mutableDataSaverStateOf(
+        dataSaverInterface = dataSaverPref,
+        key = "target_folder_name",
+        initialValue = "outputs"
+    )
 }

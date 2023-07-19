@@ -1,10 +1,36 @@
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import java.util.Properties
 import java.io.FileInputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.TimeZone
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+fun releaseTime(): String {
+    val dateFormat = SimpleDateFormat("yy.MMddHH")
+    dateFormat.timeZone = TimeZone.getTimeZone("GMT+8")
+    return dateFormat.format(Date())
+}
+
+// 秒时间戳
+fun buildTime(): Long {
+    return Date().time / 1000
+}
+
+fun executeCommand(command: String): String {
+    val process = Runtime.getRuntime().exec(command)
+    process.waitFor()
+    val output = process.inputStream.bufferedReader().use { it.readText() }
+    return output.trim()
+}
+
+val name = "ImageProcessor"
+val version = "1.${releaseTime()}"
+val gitCommits: Int = executeCommand("git rev-list HEAD --count").trim().toInt()
 
 android {
     namespace = "com.github.jing332.image_processor"
@@ -14,13 +40,16 @@ android {
         applicationId = "com.github.jing332.image_processor"
         minSdk = 24
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = gitCommits
+        versionName = version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // 写入构建 秒时间戳
+        buildConfigField("long", "BUILD_TIME", "${buildTime()}")
     }
 
 
@@ -55,14 +84,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.4.3"
@@ -70,6 +100,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    android.applicationVariants.configureEach {
+        outputs.configureEach {
+            if (this is ApkVariantOutputImpl) outputFileName = "${name}-v${versionName}.apk"
         }
     }
 }
@@ -102,7 +138,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
     implementation("androidx.navigation:navigation-compose:2.6.0")
 
-    implementation("androidx.core:core-ktx:1.9.0")
+    implementation("androidx.core:core-ktx:1.10.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("androidx.activity:activity-compose:1.7.2")
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
