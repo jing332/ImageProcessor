@@ -1,4 +1,4 @@
-package com.github.jing332.text_searcher.ui.widgets
+package com.github.jing332.image_processor.ui.widgets
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable

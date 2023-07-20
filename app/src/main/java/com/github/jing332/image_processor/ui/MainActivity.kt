@@ -69,6 +69,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.github.jing332.image_processor.R
@@ -77,7 +78,7 @@ import com.github.jing332.image_processor.ui.theme.ImageConvTheme
 import com.github.jing332.image_processor.ui.widgets.DropMenuTextField
 import com.github.jing332.image_processor.utils.ASFUriUtils.getPath
 import com.github.jing332.text_searcher.ui.widgets.LabelSlider
-import com.github.jing332.text_searcher.ui.widgets.TransparentSystemBars
+import com.github.jing332.image_processor.ui.widgets.TransparentSystemBars
 import com.origeek.imageViewer.viewer.ImageViewer
 import com.origeek.imageViewer.viewer.rememberViewerState
 
@@ -85,10 +86,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             ImageConvTheme {
                 TransparentSystemBars()
-
                 var previewImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
                 var showPreviewImage by remember { mutableStateOf(false) }
 
