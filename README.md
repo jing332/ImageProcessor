@@ -1,3 +1,6 @@
+![GitHub release](https://img.shields.io/github/downloads/jing332/ImageProcessor/total)
+![GitHub release (latest by date)](https://img.shields.io/github/downloads/jing332/ImageProcessor/latest/total)
+
 # ImageProcessor
 
 安卓图片批量 jpeg png webp 互转，以及尺寸调节。
